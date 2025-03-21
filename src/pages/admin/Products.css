@@ -256,3 +256,11 @@
 }
 
 /* Skeleton styles */
+.form-help {
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+  opacity: 0.7;
+}
+
+git config --global user.email "hyelanamuninathan@gmail.com"
+git config --global user.name "Hyelkali"

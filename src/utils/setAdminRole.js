@@ -1,31 +1,23 @@
-const functions = require("firebase-functions");
-const admin = require("firebase-admin");
+import { doc, updateDoc } from "firebase/firestore"
+import { db } from "../firebase/config"
 
-admin.initializeApp();
-
-exports.setUserAsAdmin = functions.https.onCall(async (data, context) => {
-  // Only allow requests from authenticated users
-  if (!context.auth || !context.auth.token.admin) {
-    throw new functions.https.HttpsError(
-      "permission-denied",
-      "Only admins can set roles."
-    );
-  }
-
-  const { uid } = data;
-
+/**
+ * Sets a user's role to admin in Firestore
+ * @param {string} userId - The Firebase user ID
+ * @returns {Promise<void>}
+ */
+export const setUserAsAdmin = async (userId) => {
   try {
-    // Set custom claim in Firebase Authentication
-    await admin.auth().setCustomUserClaims(uid, { admin: true });
-
-    // Update Firestore user role
-    await admin.firestore().collection("users").doc(uid).update({
+    const userRef = doc(db, "users", userId)
+    await updateDoc(userRef, {
       role: "admin",
       updatedAt: new Date().toISOString(),
-    });
-
-    return { message: `User ${uid} is now an admin.` };
+    })
+    console.log(`User ${userId} has been set as admin. Please log out and log back in.`)
+    return true
   } catch (error) {
-    throw new functions.https.HttpsError("internal", error.message);
+    console.error("Error setting user as admin:", error)
+    throw error
   }
-});
+}
+

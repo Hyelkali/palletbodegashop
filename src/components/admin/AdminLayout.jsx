@@ -36,6 +36,14 @@ const AdminLayout = () => {
                 Products
               </Link>
             </li>
+            <li className="admin-nav-item">
+              <Link
+                to="/admin/chat-support"
+                className={`admin-nav-link ${isActive("/admin/chat-support") ? "active" : ""}`}
+              >
+                Chat Support
+              </Link>
+            </li>
           </ul>
         </nav>
 

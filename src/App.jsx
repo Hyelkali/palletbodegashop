@@ -1,3 +1,5 @@
+"use client"
+
 import { Routes, Route } from "react-router-dom"
 import Layout from "./components/Layout"
 import AdminLayout from "./components/admin/AdminLayout"
@@ -15,12 +17,18 @@ import NotFound from "./pages/NotFound"
 import Support from "./pages/Support"
 import Checkout from "./pages/Checkout"
 import ThankYou from "./pages/ThankYou"
-import AdminHelper from "./components/AdminHelper"
 import AdminDashboard from "./pages/admin/Dashboard"
 import AdminOrders from "./pages/admin/Orders"
 import AdminProducts from "./pages/admin/Products"
+import AdminChatSupport from "./pages/admin/ChatSupport"
+import AdminSetup from "./pages/AdminSetup"
+import { useAuth } from "./context/AuthContext"
 
 function App() {
+  const { isAdmin } = useAuth()
+
+  console.log("App rendering, isAdmin:", isAdmin)
+
   return (
     <Routes>
       {/* Public Routes */}
@@ -37,6 +45,7 @@ function App() {
         <Route path="support" element={<Support />} />
         <Route path="checkout" element={<Checkout />} />
         <Route path="thank-you" element={<ThankYou />} />
+        <Route path="admin-setup" element={<AdminSetup />} />
         <Route path="*" element={<NotFound />} />
       </Route>
 
@@ -46,6 +55,7 @@ function App() {
           <Route index element={<AdminDashboard />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="products" element={<AdminProducts />} />
+          <Route path="chat-support" element={<AdminChatSupport />} />
         </Route>
       </Route>
     </Routes>

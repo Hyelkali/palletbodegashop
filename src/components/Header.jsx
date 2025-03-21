@@ -10,7 +10,7 @@ import "./Header.css"
 
 const Header = () => {
   const { cartItems } = useCart()
-  const { isLoggedIn, isAdmin } = useAuth()
+  const { isLoggedIn, isAdmin, user } = useAuth()
   const { openSearch } = useSearch()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
@@ -27,6 +27,12 @@ const Header = () => {
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
+    // Add close functionality for mobile menu
+    if (!isMobileMenuOpen) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = ""
+    }
   }
 
   const handleCartClick = () => {
@@ -41,37 +47,46 @@ const Header = () => {
     }
   }
 
+  console.log("Header rendering, isAdmin:", isAdmin, "user email:", user?.email)
+
   return (
     <header className={`site-header ${isScrolled ? "scrolled" : ""}`}>
       <div className="container header-container">
         <div className="logo-container">
           <Link to="/" className="logo">
-            <img src="/images/logo.svg" alt="Pallet Bodega" className="logo-image" />
+            <img src="/images/logo.png" alt="Pallet Bodega" className="logo-image" />
           </Link>
         </div>
 
         <nav className={`main-nav ${isMobileMenuOpen ? "mobile-open" : ""}`}>
           <ul className="nav-list">
             <li className="nav-item">
-              <Link to="/" className="nav-link">
+              <Link to="/" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}>
                 Home
               </Link>
             </li>
             <li className="nav-item">
-              <Link to="/catalog" className="nav-link">
+              <Link to="/catalog" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}>
                 Catalog
               </Link>
             </li>
             <li className="nav-item">
-              <Link to="/contact" className="nav-link">
+              <Link to="/contact" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}>
                 Contact
               </Link>
             </li>
             <li className="nav-item">
-              <Link to="/todays-deals" className="nav-link">
+              <Link to="/todays-deals" className="nav-link" onClick={() => setIsMobileMenuOpen(false)}>
                 Today's Deals
               </Link>
             </li>
+            {isAdmin && (
+              <li className="nav-item admin-nav-item">
+                <Link to="/admin" className="nav-link admin-nav-link" onClick={() => setIsMobileMenuOpen(false)}>
+                  Admin Dashboard
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
 

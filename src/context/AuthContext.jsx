@@ -17,6 +17,9 @@ const AuthContext = createContext()
 // Custom hook to use the auth context
 export const useAuth = () => useContext(AuthContext)
 
+// Define admin email constant
+const ADMIN_EMAIL = "hyelnamunianthan@gmail.com"
+
 export const AuthProvider = ({ children }) => {
   // State to track user, login status, admin status, and loading state
   const [user, setUser] = useState(null)
@@ -29,52 +32,63 @@ export const AuthProvider = ({ children }) => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
         // User is signed in
+        console.log("User signed in:", firebaseUser.email)
+
+        // Check if this is the admin email
+        const isAdminEmail = firebaseUser.email === ADMIN_EMAIL
+        console.log("Is admin email?", isAdminEmail)
+
         try {
           // Get user data from Firestore
           const userDoc = await getDoc(doc(db, "users", firebaseUser.uid))
 
+          let userData = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            role: isAdminEmail ? "admin" : "customer", // Default role based on email
+          }
+
           if (userDoc.exists()) {
             // Combine Firebase auth data with Firestore data
-            const userData = {
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              ...userDoc.data(),
+            const firestoreData = userDoc.data()
+            console.log("User data from Firestore:", firestoreData)
+
+            userData = {
+              ...userData,
+              ...firestoreData,
+              // Force admin role if it's the admin email
+              role: isAdminEmail ? "admin" : firestoreData.role || "customer",
             }
-
-            console.log("User data from Firestore:", userData)
-
-            setUser(userData)
-            setIsLoggedIn(true)
-            setIsAdmin(userData.role === "admin")
-            console.log("Admin status set to:", userData.role === "admin")
           } else {
             // If user document doesn't exist in Firestore, create it
-            const newUserData = {
+            console.log("Creating new user document with role:", userData.role)
+            await setDoc(doc(db, "users", firebaseUser.uid), {
               email: firebaseUser.email,
-              role: "customer",
+              role: userData.role,
               createdAt: new Date().toISOString(),
-            }
-
-            await setDoc(doc(db, "users", firebaseUser.uid), newUserData)
-            console.log("Created new user document:", newUserData)
-
-            setUser({
-              uid: firebaseUser.uid,
-              email: firebaseUser.email,
-              ...newUserData,
             })
-            setIsLoggedIn(true)
-            setIsAdmin(false)
           }
+
+          setUser(userData)
+          setIsLoggedIn(true)
+
+          // Set admin status based on email or role
+          const adminStatus = isAdminEmail || userData.role === "admin"
+          setIsAdmin(adminStatus)
+          console.log("Admin status set to:", adminStatus)
         } catch (error) {
           console.error("Error fetching user data:", error)
           // Basic user data if Firestore fetch fails
-          setUser({
+          const userData = {
             uid: firebaseUser.uid,
             email: firebaseUser.email,
-          })
+            role: isAdminEmail ? "admin" : "customer",
+          }
+
+          setUser(userData)
           setIsLoggedIn(true)
-          setIsAdmin(false)
+          setIsAdmin(isAdminEmail)
+          console.log("Admin status set to (after error):", isAdminEmail)
         }
       } else {
         // User is signed out
@@ -94,6 +108,12 @@ export const AuthProvider = ({ children }) => {
   // Function to log in a user
   const login = async (email, password) => {
     try {
+      console.log("Attempting login with email:", email)
+
+      // Check if this is the admin email
+      const isAdminEmail = email === ADMIN_EMAIL
+      console.log("Is admin email?", isAdminEmail)
+
       // Add timeout handling
       const loginPromise = signInWithEmailAndPassword(auth, email, password)
 
@@ -104,8 +124,8 @@ export const AuthProvider = ({ children }) => {
 
       // Race the promises
       const userCredential = await Promise.race([loginPromise, timeoutPromise])
+      console.log("Login successful for:", userCredential.user.email)
 
-      // We don't need to store anything in localStorage as Firebase handles the auth state
       return userCredential.user
     } catch (error) {
       console.error("Login error:", error)
@@ -124,6 +144,12 @@ export const AuthProvider = ({ children }) => {
   // Function to register a new user
   const register = async (email, password) => {
     try {
+      console.log("Attempting registration with email:", email)
+
+      // Check if this is the admin email
+      const isAdminEmail = email === ADMIN_EMAIL
+      console.log("Is admin email?", isAdminEmail)
+
       // Add timeout handling
       const registerPromise = createUserWithEmailAndPassword(auth, email, password)
 
@@ -134,11 +160,13 @@ export const AuthProvider = ({ children }) => {
 
       // Race the promises
       const userCredential = await Promise.race([registerPromise, timeoutPromise])
+      console.log("Registration successful for:", userCredential.user.email)
 
-      // Create user document in Firestore
+      // Create user document in Firestore with appropriate role
+      const role = isAdminEmail ? "admin" : "customer"
       await setDoc(doc(db, "users", userCredential.user.uid), {
         email,
-        role: "customer",
+        role,
         createdAt: new Date().toISOString(),
       })
 
@@ -160,6 +188,7 @@ export const AuthProvider = ({ children }) => {
   // Function to log out a user
   const logout = async () => {
     try {
+      console.log("Logging out user")
       await signOut(auth)
     } catch (error) {
       console.error("Logout error:", error)

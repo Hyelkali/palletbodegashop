@@ -22,7 +22,7 @@
 }
 
 .logo-image {
-  height: 40px;
+  height: 180px;
   width: auto;
 }
 
@@ -156,6 +156,21 @@
   align-items: center;
 }
 
+.admin-nav-item {
+  background-color: var(--color-primary);
+  border-radius: 4px;
+}
+
+.admin-nav-link {
+  color: var(--color-background) !important;
+  font-weight: 600;
+}
+
+.admin-nav-link:hover {
+  color: var(--color-background) !important;
+  opacity: 0.9;
+}
+
 @media (max-width: 768px) {
   .main-nav {
     position: fixed;
@@ -181,6 +196,12 @@
 
   .mobile-menu-toggle {
     display: block;
+  }
+
+  .mobile-menu-toggle .close-icon {
+    display: block;
+    width: 24px;
+    height: 24px;
   }
 }
 

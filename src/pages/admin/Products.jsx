@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { collection, getDocs, doc, addDoc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore"
-import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage"
-import { db, storage } from "../../firebase/config"
+import { collection, getDocs, addDoc, doc, updateDoc, deleteDoc, serverTimestamp } from "firebase/firestore"
+import { db } from "../../firebase/config"
 import "./Products.css"
 
 const Products = () => {
@@ -17,11 +16,10 @@ const Products = () => {
     price: "",
     originalPrice: "",
     description: "",
+    imageUrl: "",
     soldOut: false,
     sale: false,
   })
-  const [imageFile, setImageFile] = useState(null)
-  const [imagePreview, setImagePreview] = useState("")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
@@ -32,15 +30,10 @@ const Products = () => {
     try {
       setLoading(true)
       const querySnapshot = await getDocs(collection(db, "products"))
-      const productsData = []
-
-      querySnapshot.forEach((doc) => {
-        productsData.push({
-          id: doc.id,
-          ...doc.data(),
-        })
-      })
-
+      const productsData = querySnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
       setProducts(productsData)
     } catch (err) {
       console.error("Error fetching products:", err)
@@ -58,18 +51,6 @@ const Products = () => {
     }))
   }
 
-  const handleImageChange = (e) => {
-    const file = e.target.files[0]
-    if (file) {
-      setImageFile(file)
-      const reader = new FileReader()
-      reader.onloadend = () => {
-        setImagePreview(reader.result)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
   const openModal = (product = null) => {
     if (product) {
       setCurrentProduct(product)
@@ -78,10 +59,10 @@ const Products = () => {
         price: product.price.toString(),
         originalPrice: product.originalPrice ? product.originalPrice.toString() : "",
         description: product.description || "",
+        imageUrl: product.imageUrl || "",
         soldOut: product.soldOut || false,
         sale: product.sale || false,
       })
-      setImagePreview(product.images?.[0] || "")
     } else {
       setCurrentProduct(null)
       setFormData({
@@ -89,11 +70,10 @@ const Products = () => {
         price: "",
         originalPrice: "",
         description: "",
+        imageUrl: "",
         soldOut: false,
         sale: false,
       })
-      setImagePreview("")
-      setImageFile(null)
     }
     setIsModalOpen(true)
   }
@@ -106,11 +86,10 @@ const Products = () => {
       price: "",
       originalPrice: "",
       description: "",
+      imageUrl: "",
       soldOut: false,
       sale: false,
     })
-    setImagePreview("")
-    setImageFile(null)
   }
 
   const handleSubmit = async (e) => {
@@ -124,37 +103,41 @@ const Products = () => {
     try {
       setIsSubmitting(true)
 
-      let imageUrl = currentProduct?.images?.[0] || ""
-
-      // Upload image if a new one is selected
-      if (imageFile) {
-        const storageRef = ref(storage, `products/${Date.now()}_${imageFile.name}`)
-        await uploadBytes(storageRef, imageFile)
-        imageUrl = await getDownloadURL(storageRef)
-      }
+      // Use placeholder image if no image URL is provided
+      const imageUrl =
+        formData.imageUrl || `/placeholder.svg?height=400&width=400&text=${encodeURIComponent(formData.name)}`
 
       const productData = {
         name: formData.name,
         price: Number.parseFloat(formData.price),
         originalPrice: formData.originalPrice ? Number.parseFloat(formData.originalPrice) : null,
         description: formData.description,
+        imageUrl: imageUrl,
         soldOut: formData.soldOut,
         sale: formData.sale,
-        images: [imageUrl],
         updatedAt: serverTimestamp(),
       }
 
       if (currentProduct) {
         // Update existing product
         await updateDoc(doc(db, "products", currentProduct.id), productData)
+
+        // Update local state
+        setProducts((prevProducts) =>
+          prevProducts.map((p) => (p.id === currentProduct.id ? { ...p, ...productData } : p)),
+        )
       } else {
         // Add new product
-        productData.createdAt = serverTimestamp()
-        await addDoc(collection(db, "products"), productData)
+        const docRef = await addDoc(collection(db, "products"), {
+          ...productData,
+          createdAt: serverTimestamp(),
+        })
+
+        // Update local state
+        setProducts((prevProducts) => [...prevProducts, { id: docRef.id, ...productData }])
       }
 
       closeModal()
-      fetchProducts()
     } catch (err) {
       console.error("Error saving product:", err)
       setError("Failed to save product")
@@ -163,25 +146,13 @@ const Products = () => {
     }
   }
 
-  const handleDeleteProduct = async (productId, imageUrl) => {
+  const handleDeleteProduct = async (productId) => {
     if (!window.confirm("Are you sure you want to delete this product?")) {
       return
     }
 
     try {
-      // Delete product document
       await deleteDoc(doc(db, "products", productId))
-
-      // Delete image from storage if it exists
-      if (imageUrl) {
-        try {
-          const imageRef = ref(storage, imageUrl)
-          await deleteObject(imageRef)
-        } catch (imageErr) {
-          console.error("Error deleting image:", imageErr)
-          // Continue even if image deletion fails
-        }
-      }
 
       // Update local state
       setProducts((prevProducts) => prevProducts.filter((product) => product.id !== productId))
@@ -212,7 +183,7 @@ const Products = () => {
             {products.map((product) => (
               <div key={product.id} className="product-card admin-product-card">
                 <div className="product-image-container">
-                  <img src={product.images?.[0] || "/placeholder.svg"} alt={product.name} className="product-image" />
+                  <img src={product.imageUrl || "/placeholder.svg"} alt={product.name} className="product-image" />
                   {product.soldOut && <span className="product-badge sold-out">Sold out</span>}
                   {product.sale && <span className="product-badge sale">Sale</span>}
                 </div>
@@ -235,10 +206,7 @@ const Products = () => {
                   <button className="edit-button" onClick={() => openModal(product)}>
                     Edit
                   </button>
-                  <button
-                    className="delete-button"
-                    onClick={() => handleDeleteProduct(product.id, product.images?.[0])}
-                  >
+                  <button className="delete-button" onClick={() => handleDeleteProduct(product.id)}>
                     Delete
                   </button>
                 </div>
@@ -310,6 +278,27 @@ const Products = () => {
                   ></textarea>
                 </div>
 
+                <div className="form-group">
+                  <label htmlFor="imageUrl">Image URL (external image link)</label>
+                  <input
+                    type="text"
+                    id="imageUrl"
+                    name="imageUrl"
+                    value={formData.imageUrl}
+                    onChange={handleInputChange}
+                    placeholder="https://example.com/image.jpg"
+                  />
+                  <p className="form-help">
+                    Enter a URL to an image hosted elsewhere. If left blank, a placeholder will be used.
+                  </p>
+                </div>
+
+                {formData.imageUrl && (
+                  <div className="image-preview">
+                    <img src={formData.imageUrl || "/placeholder.svg"} alt="Preview" />
+                  </div>
+                )}
+
                 <div className="form-row checkbox-row">
                   <div className="form-group checkbox-group">
                     <input
@@ -326,17 +315,6 @@ const Products = () => {
                     <input type="checkbox" id="sale" name="sale" checked={formData.sale} onChange={handleInputChange} />
                     <label htmlFor="sale">On Sale</label>
                   </div>
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="image">Product Image</label>
-                  <input type="file" id="image" name="image" onChange={handleImageChange} accept="image/*" />
-
-                  {imagePreview && (
-                    <div className="image-preview">
-                      <img src={imagePreview || "/placeholder.svg"} alt="Preview" />
-                    </div>
-                  )}
                 </div>
 
                 <div className="form-actions">

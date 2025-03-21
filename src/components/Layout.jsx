@@ -5,7 +5,6 @@ import Announcement from "./Announcement"
 import { useLocation } from "react-router-dom"
 import SearchOverlay from "./SearchOverlay"
 import { useSearch } from "../hooks/useSearch"
-import AdminHelper from "./AdminHelper"
 
 const Layout = () => {
   const location = useLocation()
@@ -20,10 +19,10 @@ const Layout = () => {
         <Outlet />
       </main>
       <Footer />
-      <AdminHelper />
     </div>
   )
 }
 
 export default Layout
 
+// Compare this snippet from src/components/admin/AdminLayout.jsx:

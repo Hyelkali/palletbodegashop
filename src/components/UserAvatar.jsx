@@ -1,10 +1,11 @@
 "use client"
 
+import { Link } from "react-router-dom"
 import { useAuth } from "../context/AuthContext"
 import "./UserAvatar.css"
 
-const UseAvatar = () => {
-  const { user, isLoggedIn, logout } = useAuth()
+const UserAvatar = () => {
+  const { user, isLoggedIn, isAdmin, logout } = useAuth()
 
   if (!isLoggedIn || !user) {
     return null
@@ -23,6 +24,13 @@ const UseAvatar = () => {
           <p className="user-email">{user.email}</p>
           <p className="user-role">{user.role === "admin" ? "Administrator" : "Customer"}</p>
         </div>
+
+        {isAdmin && (
+          <Link to="/admin" className="admin-dashboard-link">
+            Admin Dashboard
+          </Link>
+        )}
+
         <button className="logout-btn" onClick={logout}>
           Logout
         </button>
@@ -31,5 +39,5 @@ const UseAvatar = () => {
   )
 }
 
-export default UseAvatar
+export default UserAvatar
 
